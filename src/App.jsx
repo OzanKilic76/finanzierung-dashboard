@@ -6,11 +6,6 @@ const USERS = [
 ]
 
 const CUSTOMERS = [
-  { id: 1, name: 'Anna Schneider', initials: 'AS', city: 'München', referrer: 'Lena Fischer', referrerEmail: 'lena.fischer@example.de', status: 'Beratungsgespräch geführt', updated: 'Heute, 09:42', accent: 'violet', email: 'anna.schneider@example.de' },
-  { id: 2, name: 'Markus Weber', initials: 'MW', city: 'Hamburg', referrer: 'David Krüger', referrerEmail: 'david.krueger@example.de', status: 'Finanzierungsprozess gestartet', updated: 'Heute, 08:15', accent: 'blue', email: 'markus.weber@example.de' },
-  { id: 3, name: 'Julia Klein', initials: 'JK', city: 'Berlin', referrer: 'Lena Fischer', referrerEmail: 'lena.fischer@example.de', status: 'Beratungsgespräch geführt', updated: 'Gestern, 16:20', accent: 'orange', email: 'julia.klein@example.de' },
-  { id: 4, name: 'Thomas Richter', initials: 'TR', city: 'Köln', referrer: 'Mia Hoffmann', referrerEmail: 'mia.hoffmann@example.de', status: 'Finished', updated: '28. Okt. 2026', accent: 'green', email: 'thomas.richter@example.de' },
-  { id: 5, name: 'Sarah Bauer', initials: 'SB', city: 'Frankfurt', referrer: 'David Krüger', referrerEmail: 'david.krueger@example.de', status: 'Finanzierungsprozess gestartet', updated: '27. Okt. 2026', accent: 'pink', email: 'sarah.bauer@example.de' },
 ]
 
 const STATUS_FILTERS = ['Alle', 'Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished']
