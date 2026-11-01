@@ -92,6 +92,8 @@ function Dashboard({ user, onLogout }) {
   const [customers, setCustomers] = useState([])
   const [referrers, setReferrers] = useState([])
   const [query, setQuery] = useState('')
+  const [personFilter, setPersonFilter] = useState('')
+  const [referrerFilter, setReferrerFilter] = useState('')
   const [filter, setFilter] = useState('Alle')
   const [selected, setSelected] = useState(null)
   const [statusNotice, setStatusNotice] = useState(null)
@@ -112,10 +114,12 @@ function Dashboard({ user, onLogout }) {
       })
   }, [])
   const filteredCustomers = useMemo(() => customers.filter((customer) => {
-    const matchesQuery = `${customer.name} ${customer.city} ${customer.type}`.toLowerCase().includes(query.toLowerCase())
+    const matchesQuery = `${customer.name} ${customer.city}`.toLowerCase().includes(query.toLowerCase())
+    const matchesPerson = customer.name.toLowerCase().includes(personFilter.toLowerCase())
+    const matchesReferrer = customer.referrer.toLowerCase().includes(referrerFilter.toLowerCase())
     const matchesFilter = filter === 'Alle' || customer.status === filter
-    return matchesQuery && matchesFilter
-  }), [customers, filter, query])
+    return matchesQuery && matchesPerson && matchesReferrer && matchesFilter
+  }), [customers, filter, personFilter, query, referrerFilter])
   const consultationCount = customers.filter((customer) => customer.status === 'Beratungsgespräch geführt').length
   const startedCount = customers.filter((customer) => customer.status === 'Finanzierungsprozess gestartet').length
   const finishedCount = customers.filter((customer) => customer.status === 'Finished').length
@@ -174,8 +178,8 @@ function Dashboard({ user, onLogout }) {
           {dataError && <div className="form-error data-error">{dataError}</div>}
           <section className="stats-grid"><StatCard label="Kunden gesamt" value={customers.length} detail="In deiner Übersicht" tone="violet" /><StatCard label="Beratungsgespräch geführt" value={consultationCount} detail="Nächster Schritt: Finanzierung" tone="blue" /><StatCard label="Finanzierungsprozess gestartet" value={startedCount} detail="Aktiv in Bearbeitung" tone="green" /><StatCard label="Finished" value={finishedCount} detail="Erfolgreich abgeschlossen" tone="orange" /></section>
           <section className="section-header"><div><h2>Kundenübersicht</h2><p>Sehe auf einen Blick, wo jeder Kunde aktuell steht.</p></div><button className="text-button">Alle anzeigen <Icon name="arrow" size={16} /></button></section>
-          <div className="toolbar"><div className="search-field"><Icon name="search" size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Person suchen..." /></div><div className="filter-group">{STATUS_FILTERS.map((item) => <button key={item} className={filter === item ? 'filter active' : 'filter'} onClick={() => setFilter(item)}>{item}</button>)}</div></div>
-          <div className="table-card"><div className="table-head"><span>Person</span><span>Vermittler</span><span>Status</span><span>Zuletzt aktualisiert</span><span /></div>{filteredCustomers.map((customer) => <button className="table-row simplified-row" key={customer.id} onClick={() => setSelected(customer)}><div className="person-cell"><div className={`avatar avatar-${customer.accent}`}>{customer.initials}</div><div><strong>{customer.name}</strong><small>{customer.city}</small></div></div><div className="referrer-cell"><strong>{customer.referrer}</strong><small>Empfehlung</small></div><StatusBadge status={customer.status} /><small className="updated-cell">{customer.updated}</small><Icon name="chevron" size={17} /></button>)}{filteredCustomers.length === 0 && <div className="empty-state">Keine Personen für diese Suche gefunden.</div>}</div>
+          <div className="toolbar"><div className="search-field"><Icon name="search" size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Global suchen..." /></div></div>
+          <div className="table-card"><div className="table-head"><div className="column-filter"><span>Person</span><input value={personFilter} onChange={(event) => setPersonFilter(event.target.value)} placeholder="Filtern..." /></div><div className="column-filter"><span>Vermittler</span><input value={referrerFilter} onChange={(event) => setReferrerFilter(event.target.value)} placeholder="Filtern..." /></div><div className="column-filter"><span>Status</span><select value={filter} onChange={(event) => setFilter(event.target.value)}>{STATUS_FILTERS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><span>Zuletzt aktualisiert</span><span /></div>{filteredCustomers.map((customer) => <button className="table-row simplified-row" key={customer.id} onClick={() => setSelected(customer)}><div className="person-cell"><div className={`avatar avatar-${customer.accent}`}>{customer.initials}</div><div><strong>{customer.name}</strong><small>{customer.city}</small></div></div><div className="referrer-cell"><strong>{customer.referrer}</strong><small>Empfehlung</small></div><StatusBadge status={customer.status} /><small className="updated-cell">{customer.updated}</small><Icon name="chevron" size={17} /></button>)}{filteredCustomers.length === 0 && <div className="empty-state">Keine Personen für diese Suche gefunden.</div>}</div>
           <p className="table-footer">Zuletzt synchronisiert vor 2 Minuten · <span>Alle Daten sind aktuell</span></p>
         </div>
       </main>
