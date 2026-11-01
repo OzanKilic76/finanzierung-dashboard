@@ -1,6 +1,6 @@
 import { Amplify } from 'aws-amplify'
 import { generateClient } from 'aws-amplify/data'
-import { signIn, signOut } from 'aws-amplify/auth'
+import { getCurrentUser, signIn, signOut } from 'aws-amplify/auth'
 import outputs from '../amplify_outputs.json'
 
 export const cloudEnabled = Boolean(outputs?.data && outputs?.auth)
@@ -45,6 +45,11 @@ export async function cloudSignIn(username, password) {
 
 export async function cloudSignOut() {
   await signOut()
+}
+
+export async function cloudCurrentUser() {
+  await getCurrentUser()
+  return { name: 'Ozan Kilic', role: 'Administrator' }
 }
 
 export async function cloudBootstrap() {

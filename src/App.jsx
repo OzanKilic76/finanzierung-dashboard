@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { cloudBootstrap, cloudCreateCustomer, cloudCreateReferrer, cloudEnabled, cloudSignIn, cloudSignOut, cloudUpdateCustomerStatus } from './cloud'
+import { cloudBootstrap, cloudCreateCustomer, cloudCreateReferrer, cloudCurrentUser, cloudEnabled, cloudSignIn, cloudSignOut, cloudUpdateCustomerStatus } from './cloud'
 
 const USERS = [
   { username: 'admin', password: 'finanzpilot', name: 'Ozan Kilic', role: 'Administrator' },
@@ -189,9 +189,18 @@ function Dashboard({ user, onLogout }) {
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(cloudEnabled)
+  useEffect(() => {
+    if (!cloudEnabled) return
+    cloudCurrentUser()
+      .then(setUser)
+      .catch(() => {})
+      .finally(() => setAuthLoading(false))
+  }, [])
   const logout = async () => {
     if (cloudEnabled) await cloudSignOut()
     setUser(null)
   }
+  if (authLoading) return <main className="login-page"><div className="login-card auth-loading">Sitzung wird geladen …</div></main>
   return user ? <Dashboard user={user} onLogout={logout} /> : <Login onLogin={setUser} />
 }
