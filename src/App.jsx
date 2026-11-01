@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 
 const USERS = [
-  { username: 'admin', password: 'finanzpilot', name: 'Sophie Wagner', role: 'Administrator' },
+  { username: 'admin', password: 'finanzpilot', name: 'Ozan Kilic', role: 'Administrator' },
   { username: 'berater', password: 'beratung2026', name: 'Leon Hoffmann', role: 'Finanzberater' },
 ]
 
@@ -153,7 +153,7 @@ function Dashboard({ user, onLogout }) {
   return (
     <div className="app-shell">
       <main className="main-content">
-        <header className="topbar"><div className="breadcrumb"><span>Arbeitsbereich</span><Icon name="chevron" size={14} /><strong>Übersicht</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" size={19} /><i /></button>{user.role === 'Administrator' && <button className="admin-button" onClick={() => setShowReferrerAdmin(true)}>Vermittler verwalten</button>}<div className="user-menu"><div className="avatar avatar-small">SW</div><div><strong>{user.name}</strong><small>{user.role}</small></div><button className="logout-button" onClick={onLogout}><Icon name="logout" size={16} /> Abmelden</button></div></div></header>
+        <header className="topbar"><div className="breadcrumb"><span>Arbeitsbereich</span><Icon name="chevron" size={14} /><strong>Übersicht</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" size={19} /><i /></button>{user.role === 'Administrator' && <button className="admin-button" onClick={() => setShowReferrerAdmin(true)}>Vermittler verwalten</button>}<div className="user-menu"><div className="avatar avatar-small">{getInitials(user.name)}</div><div><strong>{user.name}</strong><small>{user.role}</small></div><button className="logout-button" onClick={onLogout}><Icon name="logout" size={16} /> Abmelden</button></div></div></header>
         <div className="content-wrap">
           <div className="page-heading"><div><p className="eyebrow">Sonntag, 01. November 2026</p><h1>Guten Morgen, {user.name.split(' ')[0]} <span className="wave">✦</span></h1><p>Hier ist der aktuelle Überblick über deine Kunden.</p></div><button className="primary-button" onClick={() => setShowAddPerson(true)}><Icon name="plus" size={18} /> Neue Person</button></div>
           {dataError && <div className="form-error data-error">{dataError}</div>}
