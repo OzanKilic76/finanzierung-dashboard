@@ -1,10 +1,11 @@
 import { createServer } from 'node:http'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
+const distDirectory = join(root, 'dist')
 const dataDirectory = join(root, 'data')
 mkdirSync(dataDirectory, { recursive: true })
 
@@ -128,7 +129,32 @@ const server = createServer(async (request, response) => {
   }
 })
 
-const port = Number(process.env.PORT || 3001)
+const staticTypes = { '.css': 'text/css', '.js': 'text/javascript', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' }
+const originalRequestHandler = server.listeners('request')[0]
+server.removeAllListeners('request')
+server.on('request', async (request, response) => {
+  if (request.url.startsWith('/api/')) {
+    await originalRequestHandler(request, response)
+    return
+  }
+  const requestedPath = new URL(request.url, 'http://localhost').pathname
+  const filePath = requestedPath === '/' ? join(distDirectory, 'index.html') : join(distDirectory, requestedPath)
+  const safePath = filePath.startsWith(distDirectory) ? filePath : join(distDirectory, 'index.html')
+  if (request.method === 'GET' && existsSync(safePath)) {
+    response.writeHead(200, { 'Content-Type': staticTypes[safePath.slice(safePath.lastIndexOf('.'))] || 'application/octet-stream' })
+    response.end(readFileSync(safePath))
+    return
+  }
+  if (request.method === 'GET' && existsSync(join(distDirectory, 'index.html'))) {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    response.end(readFileSync(join(distDirectory, 'index.html')))
+    return
+  }
+  response.writeHead(404)
+  response.end('Frontend nicht gebaut. Bitte zuerst npm run build ausführen.')
+})
+
+const port = Number(process.env.PORT || 5173)
 server.listen(port, '0.0.0.0', () => {
   console.log(`SQLite API läuft auf http://localhost:${port}`)
 })
