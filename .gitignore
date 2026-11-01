@@ -1,6 +1,8 @@
 node_modules/
 dist/
 data/
+!amplify/data/
+!amplify/data/**
 .env
 .env.*
 !.env.example
