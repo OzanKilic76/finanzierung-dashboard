@@ -1,10 +1,8 @@
 import { Amplify } from 'aws-amplify'
 import { generateClient } from 'aws-amplify/data'
 import { signIn, signOut } from 'aws-amplify/auth'
+import outputs from '../amplify_outputs.json'
 
-const outputFiles = import.meta.glob('/amplify_outputs.json', { eager: true, import: 'default', query: '?raw' })
-const outputFile = Object.values(outputFiles)[0]
-const outputs = outputFile ? JSON.parse(outputFile) : null
 export const cloudEnabled = Boolean(outputs?.data && outputs?.auth)
 
 if (cloudEnabled) Amplify.configure(outputs)
