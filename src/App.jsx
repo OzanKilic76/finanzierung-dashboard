@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 
 const USERS = [
   { username: 'admin', password: 'finanzpilot', name: 'Sophie Wagner', role: 'Administrator' },
@@ -11,6 +11,19 @@ const CUSTOMERS = [
 const STATUS_FILTERS = ['Alle', 'Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished']
 const SENDER_EMAIL = 'kilic.ozan@outlook.de'
 const SENDER_NAME = 'Ozan Kilic'
+const CUSTOMER_STORAGE_KEY = 'kilic-baufinanzierung-customers'
+const REFERRER_STORAGE_KEY = 'kilic-baufinanzierung-referrers'
+
+function loadStoredData(key, fallback) {
+  const stored = window.localStorage.getItem(key)
+  if (!stored) return fallback
+  try {
+    return JSON.parse(stored)
+  } catch (error) {
+    console.error(`Gespeicherte Daten für "${key}" konnten nicht gelesen werden.`, error)
+    return fallback
+  }
+}
 
 function Icon({ name, size = 20 }) {
   const paths = {
@@ -73,8 +86,8 @@ function getInitials(name) {
 }
 
 function Dashboard({ user, onLogout }) {
-  const [customers, setCustomers] = useState(CUSTOMERS)
-  const [referrers, setReferrers] = useState(() => [...new Map(CUSTOMERS.map((customer) => [customer.referrer, customer.referrerEmail])).entries()].map(([name, email]) => ({ name, email })))
+  const [customers, setCustomers] = useState(() => loadStoredData(CUSTOMER_STORAGE_KEY, CUSTOMERS))
+  const [referrers, setReferrers] = useState(() => loadStoredData(REFERRER_STORAGE_KEY, []))
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Alle')
   const [selected, setSelected] = useState(null)
@@ -83,6 +96,12 @@ function Dashboard({ user, onLogout }) {
   const [showReferrerAdmin, setShowReferrerAdmin] = useState(false)
   const [newPerson, setNewPerson] = useState({ name: '', city: '', email: '', referrer: '' })
   const [newReferrer, setNewReferrer] = useState({ name: '', email: '' })
+  useEffect(() => {
+    window.localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(customers))
+  }, [customers])
+  useEffect(() => {
+    window.localStorage.setItem(REFERRER_STORAGE_KEY, JSON.stringify(referrers))
+  }, [referrers])
   const filteredCustomers = useMemo(() => customers.filter((customer) => {
     const matchesQuery = `${customer.name} ${customer.city} ${customer.type}`.toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Alle' || customer.status === filter
