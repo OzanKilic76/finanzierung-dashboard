@@ -36,7 +36,10 @@ function mapCustomer(customer, referrerMap) {
 }
 
 export async function cloudSignIn(username, password) {
-  await signIn({ username, password })
+  const result = await signIn({ username, password })
+  if (!result.isSignedIn) {
+    throw new Error('Die Anmeldung ist noch nicht abgeschlossen. Verwende einen permanenten Cognito-Login oder schließe die angeforderte Passwortänderung ab.')
+  }
   return { name: 'Ozan Kilic', role: 'Administrator' }
 }
 
