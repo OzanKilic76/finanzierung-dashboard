@@ -11,18 +11,12 @@ const CUSTOMERS = [
 const STATUS_FILTERS = ['Alle', 'Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished']
 const SENDER_EMAIL = 'kilic.ozan@outlook.de'
 const SENDER_NAME = 'Ozan Kilic'
-const CUSTOMER_STORAGE_KEY = 'kilic-baufinanzierung-customers'
-const REFERRER_STORAGE_KEY = 'kilic-baufinanzierung-referrers'
 
-function loadStoredData(key, fallback) {
-  const stored = window.localStorage.getItem(key)
-  if (!stored) return fallback
-  try {
-    return JSON.parse(stored)
-  } catch (error) {
-    console.error(`Gespeicherte Daten für "${key}" konnten nicht gelesen werden.`, error)
-    return fallback
-  }
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
+  const payload = await response.json()
+  if (!response.ok) throw new Error(payload.error || 'Die Anfrage ist fehlgeschlagen.')
+  return payload
 }
 
 function Icon({ name, size = 20 }) {
@@ -86,8 +80,8 @@ function getInitials(name) {
 }
 
 function Dashboard({ user, onLogout }) {
-  const [customers, setCustomers] = useState(() => loadStoredData(CUSTOMER_STORAGE_KEY, CUSTOMERS))
-  const [referrers, setReferrers] = useState(() => loadStoredData(REFERRER_STORAGE_KEY, []))
+  const [customers, setCustomers] = useState([])
+  const [referrers, setReferrers] = useState([])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Alle')
   const [selected, setSelected] = useState(null)
@@ -96,12 +90,18 @@ function Dashboard({ user, onLogout }) {
   const [showReferrerAdmin, setShowReferrerAdmin] = useState(false)
   const [newPerson, setNewPerson] = useState({ name: '', city: '', email: '', referrer: '' })
   const [newReferrer, setNewReferrer] = useState({ name: '', email: '' })
+  const [dataError, setDataError] = useState('')
   useEffect(() => {
-    window.localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(customers))
-  }, [customers])
-  useEffect(() => {
-    window.localStorage.setItem(REFERRER_STORAGE_KEY, JSON.stringify(referrers))
-  }, [referrers])
+    apiRequest('/api/bootstrap')
+      .then((data) => {
+        setCustomers(data.customers)
+        setReferrers(data.referrers)
+      })
+      .catch((error) => {
+        console.error(error)
+        setDataError('Die zentrale Datenbank ist nicht erreichbar.')
+      })
+  }, [])
   const filteredCustomers = useMemo(() => customers.filter((customer) => {
     const matchesQuery = `${customer.name} ${customer.city} ${customer.type}`.toLowerCase().includes(query.toLowerCase())
     const matchesFilter = filter === 'Alle' || customer.status === filter
@@ -110,36 +110,45 @@ function Dashboard({ user, onLogout }) {
   const consultationCount = customers.filter((customer) => customer.status === 'Beratungsgespräch geführt').length
   const startedCount = customers.filter((customer) => customer.status === 'Finanzierungsprozess gestartet').length
   const finishedCount = customers.filter((customer) => customer.status === 'Finished').length
-  const updateStatus = (status) => {
-    setCustomers((current) => current.map((customer) => customer.id === selected.id ? { ...customer, status, updated: 'Gerade eben' } : customer))
-    setSelected((current) => ({ ...current, status, updated: 'Gerade eben' }))
+  const updateStatus = async (status) => {
+    try {
+      const updatedCustomer = await apiRequest(`/api/customers/${selected.id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      setCustomers((current) => current.map((customer) => customer.id === updatedCustomer.id ? updatedCustomer : customer))
+      setSelected(updatedCustomer)
+    } catch (error) {
+      console.error(error)
+      setDataError(error.message)
+      return
+    }
     setStatusNotice({ customer: selected.name, referrer: selected.referrer, email: selected.referrerEmail, status })
   }
-  const addPerson = (event) => {
+  const addPerson = async (event) => {
     event.preventDefault()
-    const referrer = referrers.find((item) => item.name === newPerson.referrer)
+    const referrer = referrers.find((item) => String(item.id) === newPerson.referrer)
     if (!newPerson.name.trim() || !newPerson.referrer || !referrer) return
-    setCustomers((current) => [...current, {
-      id: Date.now(),
-      name: newPerson.name.trim(),
-      initials: getInitials(newPerson.name),
-      city: newPerson.city.trim() || 'Nicht angegeben',
-      referrer: referrer.name,
-      referrerEmail: referrer.email,
-      email: newPerson.email.trim() || 'Keine E-Mail hinterlegt',
-      status: 'Beratungsgespräch geführt',
-      updated: 'Gerade eben',
-      accent: ['violet', 'blue', 'orange', 'green', 'pink'][customers.length % 5],
-    }])
-    setNewPerson({ name: '', city: '', email: '', referrer: '' })
-    setShowAddPerson(false)
+    try {
+      const customer = await apiRequest('/api/customers', { method: 'POST', body: JSON.stringify({ ...newPerson, referrerId: Number(newPerson.referrer) }) })
+      customer.accent = ['violet', 'blue', 'orange', 'green', 'pink'][customers.length % 5]
+      setCustomers((current) => [...current, customer])
+      setNewPerson({ name: '', city: '', email: '', referrer: '' })
+      setShowAddPerson(false)
+    } catch (error) {
+      console.error(error)
+      setDataError(error.message)
+    }
   }
-  const addReferrer = (event) => {
+  const addReferrer = async (event) => {
     event.preventDefault()
     if (!newReferrer.name.trim() || !newReferrer.email.trim()) return
     if (referrers.some((item) => item.email.toLowerCase() === newReferrer.email.trim().toLowerCase())) return
-    setReferrers((current) => [...current, { name: newReferrer.name.trim(), email: newReferrer.email.trim() }])
-    setNewReferrer({ name: '', email: '' })
+    try {
+      const referrer = await apiRequest('/api/referrers', { method: 'POST', body: JSON.stringify(newReferrer) })
+      setReferrers((current) => [...current, referrer])
+      setNewReferrer({ name: '', email: '' })
+    } catch (error) {
+      console.error(error)
+      setDataError(error.message)
+    }
   }
   return (
     <div className="app-shell">
@@ -147,6 +156,7 @@ function Dashboard({ user, onLogout }) {
         <header className="topbar"><div className="breadcrumb"><span>Arbeitsbereich</span><Icon name="chevron" size={14} /><strong>Übersicht</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" size={19} /><i /></button>{user.role === 'Administrator' && <button className="admin-button" onClick={() => setShowReferrerAdmin(true)}>Vermittler verwalten</button>}<div className="user-menu"><div className="avatar avatar-small">SW</div><div><strong>{user.name}</strong><small>{user.role}</small></div><button className="logout-button" onClick={onLogout}><Icon name="logout" size={16} /> Abmelden</button></div></div></header>
         <div className="content-wrap">
           <div className="page-heading"><div><p className="eyebrow">Sonntag, 01. November 2026</p><h1>Guten Morgen, {user.name.split(' ')[0]} <span className="wave">✦</span></h1><p>Hier ist der aktuelle Überblick über deine Kunden.</p></div><button className="primary-button" onClick={() => setShowAddPerson(true)}><Icon name="plus" size={18} /> Neue Person</button></div>
+          {dataError && <div className="form-error data-error">{dataError}</div>}
           <section className="stats-grid"><StatCard label="Kunden gesamt" value={customers.length} detail="In deiner Übersicht" tone="violet" /><StatCard label="Beratungsgespräch geführt" value={consultationCount} detail="Nächster Schritt: Finanzierung" tone="blue" /><StatCard label="Finanzierungsprozess gestartet" value={startedCount} detail="Aktiv in Bearbeitung" tone="green" /><StatCard label="Finished" value={finishedCount} detail="Erfolgreich abgeschlossen" tone="orange" /></section>
           <section className="section-header"><div><h2>Kundenübersicht</h2><p>Sehe auf einen Blick, wo jeder Kunde aktuell steht.</p></div><button className="text-button">Alle anzeigen <Icon name="arrow" size={16} /></button></section>
           <div className="toolbar"><div className="search-field"><Icon name="search" size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Person suchen..." /></div><div className="filter-group">{STATUS_FILTERS.map((item) => <button key={item} className={filter === item ? 'filter active' : 'filter'} onClick={() => setFilter(item)}>{item}</button>)}</div></div>
@@ -155,7 +165,7 @@ function Dashboard({ user, onLogout }) {
         </div>
       </main>
       {selected && <div className="modal-backdrop" onClick={() => setSelected(null)}><section className="detail-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelected(null)}>×</button><div className={`detail-banner banner-${selected.accent}`}><div className={`avatar avatar-${selected.accent}`}>{selected.initials}</div><div><p>Kundenstatus</p><h2>{selected.name}</h2><span>{selected.email}</span></div></div><div className="detail-summary single-summary"><div><small>Vermittler</small><strong>{selected.referrer}</strong><a href={`mailto:${selected.referrerEmail}`}>{selected.referrerEmail}</a></div><div><small>Aktueller Stand</small><strong>{selected.status}</strong></div></div>{user.role === 'Administrator' && <label className="status-editor">Status ändern<select value={selected.status} onChange={(event) => updateStatus(event.target.value)}>{STATUS_FILTERS.slice(1).map((status) => <option key={status} value={status}>{status}</option>)}</select></label>}<h3>Status des Kunden</h3><div className="step-list"><div className={`step ${selected.status === 'Beratungsgespräch geführt' || selected.status === 'Finanzierungsprozess gestartet' || selected.status === 'Finished' ? 'done' : ''}`}><span>1</span><div><strong>Beratungsgespräch geführt</strong><small>{selected.status === 'Beratungsgespräch geführt' ? 'Aktueller Stand' : 'Erledigt'}</small></div></div><div className={`step ${selected.status === 'Finanzierungsprozess gestartet' || selected.status === 'Finished' ? 'done' : ''}`}><span>2</span><div><strong>Finanzierungsprozess gestartet</strong><small>{selected.status === 'Finanzierungsprozess gestartet' ? 'Aktueller Stand' : selected.status === 'Finished' ? 'Erledigt' : 'Ausstehend'}</small></div></div><div className={`step ${selected.status === 'Finished' ? 'done' : ''}`}><span>3</span><div><strong>Finished</strong><small>{selected.status === 'Finished' ? 'Aktueller Stand' : 'Ausstehend'}</small></div></div></div></section></div>}
-      {showAddPerson && <div className="modal-backdrop" onClick={() => setShowAddPerson(false)}><section className="detail-modal add-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowAddPerson(false)}>×</button><p className="eyebrow">Kundenübersicht</p><h2>Neue Person hinzufügen</h2><p className="modal-description">Ordne die Person direkt einem bestehenden Vermittler zu.</p><form className="add-person-form" onSubmit={addPerson}><label>Name *<input required value={newPerson.name} onChange={(event) => setNewPerson({ ...newPerson, name: event.target.value })} placeholder="z. B. Max Mustermann" /></label><label>Ort<input value={newPerson.city} onChange={(event) => setNewPerson({ ...newPerson, city: event.target.value })} placeholder="z. B. Berlin" /></label><label>E-Mail<input type="email" value={newPerson.email} onChange={(event) => setNewPerson({ ...newPerson, email: event.target.value })} placeholder="max@example.de" /></label><label>Vermittler *<select required value={newPerson.referrer} onChange={(event) => setNewPerson({ ...newPerson, referrer: event.target.value })}><option value="">Vermittler auswählen</option>{referrers.map((item) => <option key={item.name} value={item.name}>{item.name} · {item.email}</option>)}</select></label><div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowAddPerson(false)}>Abbrechen</button><button type="submit" className="primary-button">Person hinzufügen</button></div></form></section></div>}
+      {showAddPerson && <div className="modal-backdrop" onClick={() => setShowAddPerson(false)}><section className="detail-modal add-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowAddPerson(false)}>×</button><p className="eyebrow">Kundenübersicht</p><h2>Neue Person hinzufügen</h2><p className="modal-description">Ordne die Person direkt einem bestehenden Vermittler zu.</p><form className="add-person-form" onSubmit={addPerson}><label>Name *<input required value={newPerson.name} onChange={(event) => setNewPerson({ ...newPerson, name: event.target.value })} placeholder="z. B. Max Mustermann" /></label><label>Ort<input value={newPerson.city} onChange={(event) => setNewPerson({ ...newPerson, city: event.target.value })} placeholder="z. B. Berlin" /></label><label>E-Mail<input type="email" value={newPerson.email} onChange={(event) => setNewPerson({ ...newPerson, email: event.target.value })} placeholder="max@example.de" /></label><label>Vermittler *<select required value={newPerson.referrer} onChange={(event) => setNewPerson({ ...newPerson, referrer: event.target.value })}><option value="">Vermittler auswählen</option>{referrers.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.email}</option>)}</select></label><div className="form-actions"><button type="button" className="secondary-button" onClick={() => setShowAddPerson(false)}>Abbrechen</button><button type="submit" className="primary-button">Person hinzufügen</button></div></form></section></div>}
       {showReferrerAdmin && <div className="modal-backdrop" onClick={() => setShowReferrerAdmin(false)}><section className="detail-modal add-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowReferrerAdmin(false)}>×</button><p className="eyebrow">Administrator</p><h2>Vermittler verwalten</h2><p className="modal-description">Neue Vermittler stehen anschließend bei jeder neuen Person zur Auswahl.</p><div className="referrer-list">{referrers.map((item) => <div className="referrer-item" key={item.email}><div className="avatar avatar-small">{getInitials(item.name)}</div><div><strong>{item.name}</strong><small>{item.email}</small></div></div>)}</div><form className="add-person-form" onSubmit={addReferrer}><label>Name *<input required value={newReferrer.name} onChange={(event) => setNewReferrer({ ...newReferrer, name: event.target.value })} placeholder="z. B. Laura Becker" /></label><label>E-Mail-Adresse *<input required type="email" value={newReferrer.email} onChange={(event) => setNewReferrer({ ...newReferrer, email: event.target.value })} placeholder="laura@example.de" /></label><div className="form-actions"><button type="submit" className="primary-button"><Icon name="plus" size={16} /> Vermittler hinzufügen</button></div></form></section></div>}
       {statusNotice && <div className="status-notice"><div><strong>Status aktualisiert</strong><span>{statusNotice.customer} steht jetzt auf „{statusNotice.status}“.</span></div><a href={`mailto:${statusNotice.email}?subject=Status-Update%20zu%20${encodeURIComponent(statusNotice.customer)}&body=${encodeURIComponent(`Der Status von ${statusNotice.customer} wurde auf "${statusNotice.status}" geändert.\n\nViele Grüße,\n${SENDER_NAME}\n${SENDER_EMAIL}`)}`}>E-Mail an {statusNotice.referrer} öffnen</a><button onClick={() => setStatusNotice(null)}>×</button></div>}
     </div>
