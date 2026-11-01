@@ -15,6 +15,11 @@ const statusToCloud = {
 }
 const statusFromCloud = Object.fromEntries(Object.entries(statusToCloud).map(([label, value]) => [value, label]))
 
+function responseData(response) {
+  if (response.errors?.length) throw new Error(response.errors.map((error) => error.message).join('; '))
+  return response.data
+}
+
 function mapReferrer(referrer) {
   return { id: referrer.id, name: referrer.name, email: referrer.email }
 }
@@ -40,22 +45,24 @@ export async function cloudSignOut() {
 }
 
 export async function cloudBootstrap() {
-  const [{ data: referrers }, { data: customers }] = await Promise.all([
+  const [referrerResponse, customerResponse] = await Promise.all([
     client.models.Referrer.list(),
     client.models.Customer.list(),
   ])
+  const referrers = responseData(referrerResponse)
+  const customers = responseData(customerResponse)
   const mappedReferrers = referrers.map(mapReferrer)
   const referrerMap = new Map(mappedReferrers.map((referrer) => [referrer.id, referrer]))
   return { referrers: mappedReferrers, customers: customers.map((customer) => mapCustomer(customer, referrerMap)) }
 }
 
 export async function cloudCreateReferrer(input) {
-  const { data } = await client.models.Referrer.create({ name: input.name.trim(), email: input.email.trim() })
+  const data = responseData(await client.models.Referrer.create({ name: input.name.trim(), email: input.email.trim() }))
   return mapReferrer(data)
 }
 
 export async function cloudCreateCustomer(input) {
-  const { data } = await client.models.Customer.create({
+  const data = responseData(await client.models.Customer.create({
     name: input.name.trim(),
     initials: input.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0].toUpperCase()).join(''),
     city: input.city?.trim() || 'Nicht angegeben',
@@ -63,13 +70,13 @@ export async function cloudCreateCustomer(input) {
     referrerId: input.referrerId,
     status: statusToCloud['Beratungsgespräch geführt'],
     updated: 'Gerade eben',
-  })
-  const referrer = (await client.models.Referrer.get({ id: input.referrerId })).data
+  }))
+  const referrer = responseData(await client.models.Referrer.get({ id: input.referrerId }))
   return mapCustomer(data, new Map([[referrer.id, mapReferrer(referrer)]]))
 }
 
 export async function cloudUpdateCustomerStatus(id, status) {
-  const { data } = await client.models.Customer.update({ id, status: statusToCloud[status], updated: 'Gerade eben' })
-  const referrer = (await client.models.Referrer.get({ id: data.referrerId })).data
+  const data = responseData(await client.models.Customer.update({ id, status: statusToCloud[status], updated: 'Gerade eben' }))
+  const referrer = responseData(await client.models.Referrer.get({ id: data.referrerId }))
   return mapCustomer(data, new Map([[referrer.id, mapReferrer(referrer)]]))
 }

@@ -108,7 +108,7 @@ function Dashboard({ user, onLogout }) {
       })
       .catch((error) => {
         console.error(error)
-        setDataError('Die zentrale Datenbank ist nicht erreichbar.')
+        setDataError(error.message || 'Die zentrale Datenbank ist nicht erreichbar.')
       })
   }, [])
   const filteredCustomers = useMemo(() => customers.filter((customer) => {
