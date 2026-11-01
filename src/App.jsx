@@ -9,7 +9,7 @@ const USERS = [
 const CUSTOMERS = [
 ]
 
-const STATUS_FILTERS = ['Alle', 'Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished']
+const STATUS_FILTERS = ['Alle', 'Neu', 'Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished']
 const SENDER_EMAIL = 'kilic.ozan@outlook.de'
 const SENDER_NAME = 'Ozan Kilic'
 
@@ -80,7 +80,7 @@ function StatCard({ label, value, detail, tone }) {
 }
 
 function StatusBadge({ status }) {
-  const className = status === 'Finished' ? 'success' : status === 'Beratungsgespräch geführt' ? 'neutral' : 'info'
+  const className = status === 'Finished' ? 'success' : status === 'Neu' || status === 'Beratungsgespräch geführt' ? 'neutral' : 'info'
   return <span className={`status-badge ${className}`}><i />{status}</span>
 }
 

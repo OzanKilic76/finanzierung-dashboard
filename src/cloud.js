@@ -9,6 +9,7 @@ if (cloudEnabled) Amplify.configure(outputs)
 
 const client = cloudEnabled ? generateClient() : null
 const statusToCloud = {
+  Neu: 'NEU',
   'Beratungsgespräch geführt': 'BERATUNGSGESPRAECH_GEFUEHRT',
   'Finanzierungsprozess gestartet': 'FINANZIERUNGSPROZESS_GESTARTET',
   Finished: 'FINISHED',

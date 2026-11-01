@@ -2,6 +2,7 @@ import { a, defineData, type ClientSchema } from '@aws-amplify/backend'
 
 const schema = a.schema({
   Status: a.enum([
+    'NEU',
     'BERATUNGSGESPRAECH_GEFUEHRT',
     'FINANZIERUNGSPROZESS_GESTARTET',
     'FINISHED',

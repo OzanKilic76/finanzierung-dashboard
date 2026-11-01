@@ -29,7 +29,7 @@ database.exec(`
   );
 `)
 
-const allowedStatuses = new Set(['Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished'])
+const allowedStatuses = new Set(['Neu', 'Beratungsgespräch geführt', 'Finanzierungsprozess gestartet', 'Finished'])
 
 function sendJson(response, status, payload) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' })
@@ -102,7 +102,7 @@ const server = createServer(async (request, response) => {
       const result = database.prepare(`
         INSERT INTO customers (name, initials, city, email, referrer_id, status, updated)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(body.name.trim(), initials, body.city?.trim() || 'Nicht angegeben', body.email?.trim() || 'Keine E-Mail hinterlegt', referrer.id, 'Beratungsgespräch geführt', 'Gerade eben')
+      `).run(body.name.trim(), initials, body.city?.trim() || 'Nicht angegeben', body.email?.trim() || 'Keine E-Mail hinterlegt', referrer.id, 'Neu', 'Gerade eben')
       sendJson(response, 201, getCustomer(Number(result.lastInsertRowid)))
       return
     }
