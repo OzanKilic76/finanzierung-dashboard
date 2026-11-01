@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { cloudBootstrap, cloudCreateCustomer, cloudCreateReferrer, cloudEnabled, cloudSignIn, cloudSignOut, cloudUpdateCustomerStatus } from './cloud'
 
 const USERS = [
   { username: 'admin', password: 'finanzpilot', name: 'Ozan Kilic', role: 'Administrator' },
@@ -38,8 +39,16 @@ function Login({ onLogin }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault()
+    if (cloudEnabled) {
+      try {
+        onLogin(await cloudSignIn(username, password))
+      } catch (loginError) {
+        setError(loginError.message || 'Anmeldung fehlgeschlagen.')
+      }
+      return
+    }
     const user = USERS.find((item) => item.username === username && item.password === password)
     if (!user) {
       setError('Benutzername oder Passwort ist nicht korrekt.')
@@ -92,7 +101,7 @@ function Dashboard({ user, onLogout }) {
   const [newReferrer, setNewReferrer] = useState({ name: '', email: '' })
   const [dataError, setDataError] = useState('')
   useEffect(() => {
-    apiRequest('/api/bootstrap')
+    (cloudEnabled ? cloudBootstrap() : apiRequest('/api/bootstrap'))
       .then((data) => {
         setCustomers(data.customers)
         setReferrers(data.referrers)
@@ -112,7 +121,9 @@ function Dashboard({ user, onLogout }) {
   const finishedCount = customers.filter((customer) => customer.status === 'Finished').length
   const updateStatus = async (status) => {
     try {
-      const updatedCustomer = await apiRequest(`/api/customers/${selected.id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      const updatedCustomer = cloudEnabled
+        ? await cloudUpdateCustomerStatus(selected.id, status)
+        : await apiRequest(`/api/customers/${selected.id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
       setCustomers((current) => current.map((customer) => customer.id === updatedCustomer.id ? updatedCustomer : customer))
       setSelected(updatedCustomer)
     } catch (error) {
@@ -127,7 +138,9 @@ function Dashboard({ user, onLogout }) {
     const referrer = referrers.find((item) => String(item.id) === newPerson.referrer)
     if (!newPerson.name.trim() || !newPerson.referrer || !referrer) return
     try {
-      const customer = await apiRequest('/api/customers', { method: 'POST', body: JSON.stringify({ ...newPerson, referrerId: Number(newPerson.referrer) }) })
+      const customer = cloudEnabled
+        ? await cloudCreateCustomer({ ...newPerson, referrerId: newPerson.referrer })
+        : await apiRequest('/api/customers', { method: 'POST', body: JSON.stringify({ ...newPerson, referrerId: Number(newPerson.referrer) }) })
       customer.accent = ['violet', 'blue', 'orange', 'green', 'pink'][customers.length % 5]
       setCustomers((current) => [...current, customer])
       setNewPerson({ name: '', city: '', email: '', referrer: '' })
@@ -142,7 +155,9 @@ function Dashboard({ user, onLogout }) {
     if (!newReferrer.name.trim() || !newReferrer.email.trim()) return
     if (referrers.some((item) => item.email.toLowerCase() === newReferrer.email.trim().toLowerCase())) return
     try {
-      const referrer = await apiRequest('/api/referrers', { method: 'POST', body: JSON.stringify(newReferrer) })
+      const referrer = cloudEnabled
+        ? await cloudCreateReferrer(newReferrer)
+        : await apiRequest('/api/referrers', { method: 'POST', body: JSON.stringify(newReferrer) })
       setReferrers((current) => [...current, referrer])
       setNewReferrer({ name: '', email: '' })
     } catch (error) {
@@ -174,5 +189,9 @@ function Dashboard({ user, onLogout }) {
 
 export default function App() {
   const [user, setUser] = useState(null)
-  return user ? <Dashboard user={user} onLogout={() => setUser(null)} /> : <Login onLogin={setUser} />
+  const logout = async () => {
+    if (cloudEnabled) await cloudSignOut()
+    setUser(null)
+  }
+  return user ? <Dashboard user={user} onLogout={logout} /> : <Login onLogin={setUser} />
 }

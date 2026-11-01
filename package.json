@@ -11,9 +11,17 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.4.1",
+    "aws-amplify": "^6.15.8",
     "vite": "^6.3.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.16.0",
+    "aws-cdk-lib": "^2.195.0",
+    "constructs": "^10.4.2"
+  },
+  "amplify": {
+    "projectRegion": "eu-north-1"
+  }
 }
