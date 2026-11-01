@@ -60,7 +60,7 @@ export async function cloudBootstrap() {
 }
 
 export async function cloudCreateReferrer(input) {
-  const data = responseData(await client.models.Referrer.create({ name: input.name.trim(), email: input.email.trim() }))
+  const data = responseData(await client.models.Referrer.create({ name: input.name.trim(), email: input.email?.trim() || undefined }))
   return mapReferrer(data)
 }
 

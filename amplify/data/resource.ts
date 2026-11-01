@@ -8,7 +8,7 @@ const schema = a.schema({
   ]),
   Referrer: a.model({
     name: a.string().required(),
-    email: a.string().required(),
+    email: a.string(),
     customers: a.hasMany('Customer', 'referrerId'),
   }).authorization((allow) => [allow.authenticated()]),
   Customer: a.model({

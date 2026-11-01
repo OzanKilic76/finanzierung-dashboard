@@ -15,7 +15,7 @@ database.exec(`
   CREATE TABLE IF NOT EXISTS referrers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE
+    email TEXT UNIQUE
   );
   CREATE TABLE IF NOT EXISTS customers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,12 +81,13 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/referrers') {
       const body = await parseBody(request)
-      if (!body.name?.trim() || !body.email?.trim()) {
-        sendJson(response, 400, { error: 'Name und E-Mail-Adresse sind erforderlich.' })
+      if (!body.name?.trim()) {
+        sendJson(response, 400, { error: 'Der Name ist erforderlich.' })
         return
       }
-      const result = database.prepare('INSERT INTO referrers (name, email) VALUES (?, ?)').run(body.name.trim(), body.email.trim())
-      sendJson(response, 201, { id: Number(result.lastInsertRowid), name: body.name.trim(), email: body.email.trim() })
+      const email = body.email?.trim() || ''
+      const result = database.prepare('INSERT INTO referrers (name, email) VALUES (?, ?)').run(body.name.trim(), email)
+      sendJson(response, 201, { id: Number(result.lastInsertRowid), name: body.name.trim(), email })
       return
     }
 
